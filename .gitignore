@@ -1,5 +1,6 @@
 t-env/
 .DS_Store/
+.DS_Store
 config.env
 
 # Byte-compiled / optimized / DLL files
