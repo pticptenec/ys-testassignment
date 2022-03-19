@@ -69,15 +69,38 @@ def parse_message(message):
 def get_songs_search():
     message = request.args.get('message')
     message = parse_message(message)
-    results = repository.SongsRepository(mongo.db).search(message)
-    return results
+    results = repository.SongsRepository(mongo.db).search(message.lower())
+    return {
+        'result': results,
+    }
 
 
-@bp.route('/songs/<int:song_id>/rating', methods=['POST'])
+def parse_rating(rating):
+    if rating is None:
+        raise BadRequest
+    
+    try:
+        res = int(rating)
+    except ValueError:
+        raise BadRequest
+
+    if 1 <= res <= 5:
+        return res
+    raise BadRequest
+
+
+@bp.route('/songs/<string:song_id>/rating', methods=['POST'])
 def post_song_rating(song_id):
-    return {}
+    rating = request.json.get('rating')
+    rating = parse_rating(rating)
+    res = repository.SongsRepository(mongo.db).post_rating(song_id, rating)
+    return {
+        'result': res
+    }
 
 
-@bp.route('/songs/<int:song_id>/statistics', methods=['GET'])
+@bp.route('/songs/<string:song_id>/statistics', methods=['GET'])
 def get_song_statistics(song_id):
-    return {}
+    return {
+        'statistics': repository.SongsRepository(mongo.db).song_rating(song_id),
+    }

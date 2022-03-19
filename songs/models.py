@@ -39,8 +39,7 @@ class Song(BaseModel):
     difficulty: float
     level: int
     released: date
-    ratings: Optional[Rating]
-
+    ratings: Optional[list[int]]
 
 
 ENCODERS_BY_TYPE[MongoObjectId] = str

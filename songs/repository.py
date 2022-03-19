@@ -1,6 +1,6 @@
+import json
 from abc import ABC, abstractmethod
 
-from flask_pymongo import PyMongo
 from pymongo.database import Database
 
 from songs import models
@@ -37,7 +37,29 @@ class SongsRepository(Songs):
     def search(self, msg):
         return list(self.db.songs.aggregate([
             {'$match': {'$text': {'$search': msg}}},
-            # {'$sort': {'score': {'$meta': "textScore"}}},
-            # {'$project': {'title': 1, '_id': 0, 'artist': 1}},
+            # do not change order of two dicts below, MongoDB:4.4 bug
+            {'$project': {'title': 1, '_id': 0, 'artist': 1}},
+            {'$sort': {'score': {'$meta': "textScore"}}},
         ]))
-        # return list(self.db.songs.find(filter={'$text': {'$search': msg}}))
+
+    def post_rating(self, song_id, rating):
+        mobj_id = models.MongoObjectId(song_id)
+        objects = list(self.db.songs.find({'_id': mobj_id}))
+        if len(objects) != 1:
+            return False
+
+        song = models.Song(**objects[0])
+        if song.ratings is None:
+            song.ratings = []
+
+        song.ratings.append(rating)
+        self.db.songs.update_one({
+            '_id': mobj_id,
+        }, {
+            '$set': json.loads(song.json()),
+        })
+        return True
+
+    def song_rating(self, song_id):
+        mobj_id = models.MongoObjectId(song_id)
+        return []
