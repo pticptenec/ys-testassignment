@@ -7,7 +7,7 @@
   `python -m venv t-env`
 
   `source t-env/bin/activate`
-  
+
   `pip install -r requirements.txt`
 
 2. Run database in Docker
@@ -50,3 +50,11 @@
   `flask run`
 
 11. Try app with http client
+
+
+# Important note about scalability
+
+Now app is querying for all ratings for given song.
+It't made on purpose to see song's ratings identifiers.
+For production level songs' pagination must not include ratings
+identifiers.
