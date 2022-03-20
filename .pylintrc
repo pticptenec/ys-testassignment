@@ -1,0 +1,8 @@
+[MASTER]
+disable =
+    # no docstrings
+    C0114,
+    C0115,
+    C0116,
+
+init-hook = 'import sys; sys.path.append("./")'
