@@ -1,10 +1,13 @@
 from datetime import date
 from typing import Optional
+from typing import Any
 
 from flask.json import JSONEncoder
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
+from pydantic import Field
 from pydantic.json import ENCODERS_BY_TYPE
-from bson import ObjectId
+from bson import ObjectId # type: ignore
+from bson import BSON # type: ignore
 
 
 class MongoObjectId(ObjectId):
@@ -13,23 +16,33 @@ class MongoObjectId(ObjectId):
         yield cls.validate
 
     @classmethod
-    def validate(cls, v):
-        return MongoObjectId(v)
+    def validate(cls, value: Any):
+        return MongoObjectId(value)
 
 
 class MongoEncoder(JSONEncoder):
-    def default(self, o):
+    def default(self, o: Any):
         if isinstance(o, MongoObjectId):
             return str(o)
         if isinstance(o, ObjectId):
             return str(o)
-        else:
-            return super().default(o)
+        if isinstance(o, Song):
+            return o.dict()
+        if isinstance(o, date):
+            return o.strftime('%Y-%m-%d')
+
+        return super().default(o)
 
 
 class Rating(BaseModel):
     id: Optional[MongoObjectId] = Field(None, alias="_id")
     value: int
+
+    def bson(self) -> BSON:
+        res = self.dict()
+        if res.get('_id') is None:
+            res.pop('_id', None)
+        return res
 
 
 class Song(BaseModel):
@@ -39,7 +52,15 @@ class Song(BaseModel):
     difficulty: float
     level: int
     released: date
-    ratings: Optional[list[int]]
+    ratings_ids: Optional[list[MongoObjectId]]
+
+    def dict(self):
+        max_ratings_len = 3
+        if self.ratings_ids is not None:
+            self.ratings_ids = self.ratings_ids[:max_ratings_len]
+            return super().dict()
+
+        return super().dict(exclude={'ratings_ids'})
 
 
 ENCODERS_BY_TYPE[MongoObjectId] = str

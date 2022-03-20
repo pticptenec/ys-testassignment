@@ -1,11 +1,14 @@
 from flask import Flask
-from flask_pymongo import PyMongo
+from flask_pymongo import PyMongo # type: ignore
+
+from config import DevConfig
+from config import LoadConfig
 
 
 mongo = PyMongo()
 
 
-def create_app(config):
+def create_app(config: DevConfig | LoadConfig) -> Flask:
     app = Flask(__name__)
     app.config.from_object(config)
 
@@ -18,3 +21,6 @@ def create_app(config):
     app.register_blueprint(bp)
 
     return app
+
+
+__all__ = ['create_app', 'mongo']

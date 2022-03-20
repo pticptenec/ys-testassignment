@@ -1,4 +1,5 @@
 import os
+
 from dotenv import load_dotenv
 
 
@@ -9,8 +10,12 @@ class DevConfig:
     DEBUG = False
     MONGO_URI = os.getenv('MONGO_URI')
 
+
 class LoadConfig(DevConfig):
     pass
+
+
+Config: type
 
 
 app_env = os.getenv('FLASK_ENV')
