@@ -5,7 +5,9 @@
 1. Install dependencies
     
   `python -m venv t-env`
+
   `source t-env/bin/activate`
+  
   `pip install -r requirements.txt`
 
 2. Run database in Docker
@@ -17,7 +19,9 @@
 4. Run linter and mypy
   
   `pylint songs/`
+
   `pyling tests/`
+
   `mypy songs/`
 
 5. Run Unit tests from cwd
