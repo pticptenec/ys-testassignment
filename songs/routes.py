@@ -109,10 +109,13 @@ def parse_rating(rating: Optional[str]) -> int:
 def post_song_rating(song_id: str) -> dict:
     rating_arg = request.json.get('rating') # type: ignore
     rating = parse_rating(rating_arg)
-    rating_id = RatingsRepository(mongo.db).post_rating(rating)
-    status = SongsRepository(mongo.db).append_rating(song_id, rating_id)
+    song = SongsRepository(mongo.db).get_song_by_id(MongoObjectId(song_id))
+    if song is None:
+        raise NotFound
+
+    rating_id = RatingsRepository(mongo.db).post_rating(rating, song_id)
     return {
-        'result': status,
+        'rating_id': rating_id,
     }
 
 
@@ -120,16 +123,15 @@ def calculate_statistics(song_repo: Songs,
         ratings_repo: Ratings,
         song_id: str
     ) -> dict:
-    song_id = MongoObjectId(song_id)
-    song = song_repo.get_song_by_id(song_id)
+    song = song_repo.get_song_by_id(MongoObjectId(song_id))
     if song is None:
         raise NotFound
-    if song.ratings_ids is None:
-        raise BadRequest
 
-    stat = ratings_repo.statistics(song.ratings_ids)
-    del stat['_id']
-    stat['avg'] = round(stat['avg'], 2)
+    stat = ratings_repo.statistics(song.id)
+    stat.pop('_id', None)
+    if stat.get('avg'):
+        stat['avg'] = round(stat['avg'], 2)
+
     return stat
 
 

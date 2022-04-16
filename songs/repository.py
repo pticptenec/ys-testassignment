@@ -1,5 +1,7 @@
 from abc import ABC
 from abc import abstractmethod
+from types import NoneType
+from typing import Optional
 
 from pymongo.database import Database # type: ignore
 from pydantic import ValidationError
@@ -11,12 +13,12 @@ from songs.models import MongoObjectId
 
 class Ratings(ABC):
     @abstractmethod
-    def post_rating(self, rating: int) -> MongoObjectId:
+    def post_rating(self, rating: int, song_id: str) -> MongoObjectId:
         raise NotImplementedError
 
     @abstractmethod
     def statistics(self,
-            ratings_ids: list[MongoObjectId]) -> dict:
+            song_id: Optional[MongoObjectId]) -> dict:
         raise NotImplementedError
 
 
@@ -34,11 +36,7 @@ class Songs(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def append_rating(self, song_id: str, rating_id: MongoObjectId) -> bool:
-        raise NotImplementedError
-
-    @abstractmethod
-    def get_song_by_id(self, song_id: MongoObjectId) -> Song:
+    def get_song_by_id(self, song_id: MongoObjectId) -> Optional[Song]:
         raise NotImplementedError
 
 
@@ -46,22 +44,25 @@ class RatingsRepository(Ratings):
     def __init__(self, db: Database):
         self.db = db
 
-    def post_rating(self, rating: int) -> MongoObjectId:
+    def post_rating(self, rating: int, song_id: str) -> MongoObjectId:
         rating_id = self.db.ratings.insert_one(
-            Rating(value=rating).bson()
+            Rating(value=rating, song_id=MongoObjectId(song_id)).bson()
         )
         return rating_id.inserted_id
 
-    def statistics(self, ratings_ids: list[MongoObjectId]) -> dict:
-        return next(self.db.ratings.aggregate([
-            {'$match': {'_id': {'$in': ratings_ids}}},
-            {'$group': {
-                '_id': 0,
-                'avg': {'$avg': '$value'},
-                'min': {'$min': '$value'},
-                'max': {'$max': '$value'},
-            }},
-        ]))
+    def statistics(self, song_id: Optional[MongoObjectId]) -> dict:
+        try:
+            return next(self.db.ratings.aggregate([
+                {'$match': {'song_id': {'$eq': song_id}}},
+                {'$group': {
+                    '_id': 0,
+                    'avg': {'$avg': '$value'},
+                    'min': {'$min': '$value'},
+                    'max': {'$max': '$value'},
+                }},
+            ]))
+        except StopIteration:
+            return {}
 
 
 class SongsRepository(Songs):
@@ -97,37 +98,14 @@ class SongsRepository(Songs):
             {'$sort': {'score': {'$meta': "textScore"}}},
         ])))
 
-    def append_rating(self, song_id: str,
-                    rating_id: MongoObjectId) -> bool:
-        mobj_id = MongoObjectId(song_id)
-        objects = list(self.db.songs.find({'_id': mobj_id}))
-        if len(objects) != 1:
-            return False
-
-        try:
-            song = Song(**objects[0])
-        except ValidationError:
-            return False
-
-        if song.ratings_ids is None or len(song.ratings_ids) == 0:
-            self.db.songs.update_one({
-                '_id': mobj_id,
-            }, {
-                '$set': {'ratings_ids': [rating_id]},
-            })
-        else:
-            self.db.songs.update_one({
-                '_id': mobj_id,
-            }, {
-                '$push': {'ratings_ids': rating_id},
-            })
-
-        return True
-
-    def get_song_by_id(self, song_id: MongoObjectId) -> Song:
-        return Song(**self.db.songs.find_one({
+    def get_song_by_id(self, song_id: MongoObjectId) -> Optional[Song]:
+        res = self.db.songs.find_one({
             '_id': {'$eq': song_id},
-        }))
+        })
+        if res is None:
+            return res
+
+        return Song(**res)
 
 
 class SongsMem(Songs):
@@ -143,9 +121,6 @@ class SongsMem(Songs):
     def get_song_by_id(self, song_id: MongoObjectId) -> Song:
         return next(filter(lambda x: x.id == song_id, self.songs))
 
-    def append_rating(self, song_id: str, rating_id: MongoObjectId) -> bool:
-        return NotImplemented
-
     def search(self, msg: str) -> list[Song]:
         return NotImplemented
 
@@ -154,15 +129,15 @@ class RatingsMem(Ratings):
     def __init__(self, ratings):
         self.ratings = ratings
 
-    def post_rating(self, rating: int) -> MongoObjectId:
+    def post_rating(self, rating: int, song_id: str) -> MongoObjectId:
         return NotImplemented
 
-    def statistics(self, ratings_ids: list[MongoObjectId]) -> dict:
+    def statistics(self, song_id: Optional[MongoObjectId]) -> dict:
         sum_ = 0
         min_ = possible_max = 5 + 1
         max_ = 0
         size = 0
-        for rating in filter(lambda x: x.id in ratings_ids,
+        for rating in filter(lambda x: x.song_id == song_id,
                              self.ratings):
             sum_ += rating.value
             if rating.value > max_:

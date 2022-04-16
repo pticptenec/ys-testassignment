@@ -36,6 +36,7 @@ class MongoEncoder(JSONEncoder):
 
 class Rating(BaseModel):
     id: Optional[MongoObjectId] = Field(None, alias="_id")
+    song_id: MongoObjectId
     value: int
 
     def bson(self) -> BSON:
@@ -52,15 +53,6 @@ class Song(BaseModel):
     difficulty: float
     level: int
     released: date
-    ratings_ids: Optional[list[MongoObjectId]]
-
-    def dict(self):
-        max_ratings_len = 3
-        if self.ratings_ids is not None:
-            self.ratings_ids = self.ratings_ids[:max_ratings_len]
-            return super().dict()
-
-        return super().dict(exclude={'ratings_ids'})
 
 
 ENCODERS_BY_TYPE[MongoObjectId] = str
