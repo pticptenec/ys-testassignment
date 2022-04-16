@@ -20,7 +20,7 @@
   
   `pylint songs/`
 
-  `pyling tests/`
+  `pylint tests/`
 
   `mypy songs/`
 
