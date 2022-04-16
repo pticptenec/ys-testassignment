@@ -35,7 +35,7 @@ def app(testdata):
     })
 
     mongo.db.songs.delete_many({})
-    mongo.db.songs.insert_many([json.loads(val.json()) for val in testdata])
+    mongo.db.songs.insert_many([json.loads(val.json(exclude={'id'})) for val in testdata])
     yield app
     mongo.db.songs.delete_many({})
     mongo.db.ratings.delete_many({})
@@ -57,7 +57,7 @@ def app_only():
 
 @pytest.fixture(scope='session')
 def insert_testdata(app_only, testdata):
-    mongo.db.songs.insert_many([json.loads(val.json()) for val in testdata])
+    mongo.db.songs.insert_many([json.loads(val.json(exclude={'id'})) for val in testdata])
     yield
 
 
@@ -78,7 +78,7 @@ def pytest_collection_modifyitems(config, items):
             )
         )
         return
-   
+ 
     mark_skipped(
             filter(
                 lambda x: True if mark in x.keywords else False,

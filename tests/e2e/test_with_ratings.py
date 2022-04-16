@@ -55,9 +55,7 @@ def test_post_rating_success(client_func, songs):
 
     saved = next(mongo.db.ratings.find({'value': 3}))
 
-    assert response.json == {
-        'result': True,
-    }
+    assert response.json.get('rating_id') is not None
 
     assert saved['value'] == 3
 
@@ -77,12 +75,8 @@ def test_post_rating_success_second(client_func, songs):
     saved3 = next(mongo.db.ratings.find({'value': 3}))
     saved4 = next(mongo.db.ratings.find({'value': 4}))
 
-    assert response1.json == {
-        'result': True,
-    }
-    assert response2.json == {
-        'result': True,
-    }
+    assert response1.json.get('rating_id') is not None
+    assert response2.json.get('rating_id') is not None
 
     assert saved3['value'] == 3
     assert saved4['value'] == 4
@@ -120,16 +114,15 @@ def calculate_statistics(ratings):
 
 
 def test_ratings_statistics(client_func, testdata):
-    ratings = list(mongo.db.ratings.find({}))
     song = testdata[0]
     db_song = list(mongo.db.songs.aggregate([
         {'$match': {'title': {'$eq': song.title}}},
     ]))[0]
-    mongo.db.songs.update_one(
-        {'title': song.title},
-        {'$set': {'ratings_ids': list(map(lambda rating: rating['_id'], ratings))}},
+    mongo.db.ratings.update_many(
+        {},
+        {'$set': {'song_id': db_song['_id']}},
     )
-
+    ratings = list(mongo.db.ratings.find({}))
     response = client_func.get(f'/api/songs/{db_song["_id"]}/statistics')
 
     assert response.json == {

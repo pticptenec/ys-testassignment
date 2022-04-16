@@ -92,23 +92,22 @@ def test_calculate_statistics(testdata):
     repo_songs = SongsMem(songs)
     ratings = [Rating(**d) for d in [{
         '_id': b'abcdefghijkl',
+        'song_id': MongoObjectId(b'123456789122'),
         'value': 4,
     }, {
         '_id': b'bcdefghijkla',
+        'song_id': MongoObjectId(b'123456789121'),
         'value': 4,
     }, {
         '_id': b'cdefghijklab',
+        'song_id': MongoObjectId(b'123456789123'),
         'value': 3,
     }]]
     repo_ratings = RatingsMem(ratings)
-    songs[song_index].ratings_ids = [
-        MongoObjectId(b'abcdefghijkl'),
-        MongoObjectId(b'cdefghijklab')
-    ]
 
-    stat = calculate_statistics(repo_songs, repo_ratings, b'123456789123')
+    stat = calculate_statistics(repo_songs, repo_ratings, MongoObjectId(b'123456789123'))
     assert stat == {
-        'avg': round(3.5, 2),
+        'avg': round(3.0),
         'min': 3,
-        'max': 4,
+        'max': 3,
     }
